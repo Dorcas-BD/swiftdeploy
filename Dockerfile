@@ -8,11 +8,11 @@ RUN useradd -m appuser
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 #copy the app code
-COPY . .
+COPY app/ .
 
 #switch to non root user
 USER appuser
