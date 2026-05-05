@@ -1,0 +1,247 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import yaml
+import subprocess
+import shutil 
+import time
+
+
+def load_manifest():
+    with open("manifest.yaml", "r") as f:
+        return yaml.safe_load(f)
+
+
+def init():
+    manifest = load_manifest()
+
+    # get values from manifest
+    app_image = manifest["services"]["image"]
+    app_port = manifest["services"]["port"]
+    app_mode = manifest["services"]["mode"]
+    app_version = manifest["services"]["version"]
+    restart_policy = manifest["services"]["restart_policy"]
+
+    nginx_image = manifest["nginx"]["image"]
+    nginx_port = manifest["nginx"]["port"]
+    proxy_timeout = manifest["nginx"]["proxy_timeout"]
+
+    network_name = manifest["network"]["name"]
+    network_driver = manifest["network"]["driver_type"]
+
+    logs_volume = manifest["volumes"]["logs"]
+
+    # generate nginx.conf from template
+    with open("templates/nginx.conf.tmpl", "r") as f:
+        nginx_template = f.read()
+
+    nginx_conf = nginx_template.replace("{{NGINX_PORT}}", str(nginx_port))
+    nginx_conf = nginx_conf.replace("{{PROXY_TIMEOUT}}", str(proxy_timeout))
+
+    with open("nginx.conf", "w") as f:
+        f.write(nginx_conf)
+
+    # generate docker-compose.yml from template
+    with open("templates/docker-compose.yml.tmpl", "r") as f:
+        compose_template = f.read()
+
+    compose = compose_template.replace("{{APP_IMAGE}}", app_image)
+    compose = compose.replace("{{MODE}}", app_mode)
+    compose = compose.replace("{{APP_VERSION}}", str(app_version))
+    compose = compose.replace("{{APP_PORT}}", str(app_port))
+    compose = compose.replace("{{NGINX_IMAGE}}", nginx_image)
+    compose = compose.replace("{{NGINX_PORT}}", str(nginx_port))
+    compose = compose.replace("{{NETWORK_NAME}}", network_name)
+    compose = compose.replace("{{NETWORK_DRIVER}}", network_driver)
+    compose = compose.replace("{{RESTART_POLICY}}", restart_policy)
+    compose = compose.replace("{{LOGS_VOLUME}}", logs_volume)
+
+    with open("docker-compose.yml", "w") as f:
+        f.write(compose)
+
+    print("Generated nginx.conf")
+    print("Generated docker-compose.yml")
+
+
+def validate():
+    passed = True
+
+    # check if manifest.yaml exists and is valid YAML
+    try:
+        manifest = load_manifest()
+        print("manifest.yaml exists and is valid YAML")
+    except FileNotFoundError:
+        print("manifest.yaml not found")
+        passed = False
+    except yaml.YAMLError:
+        print("manifest.yaml is not valid YAML")
+        passed = False
+
+    # check if required fields are present
+    try:
+        assert manifest["services"]["image"]
+        assert manifest["services"]["port"]
+        assert manifest["nginx"]["port"]
+        assert manifest["network"]["name"]
+        assert manifest["network"]["driver_type"]
+        print("All required fields are present")
+    except (KeyError, AssertionError):
+        print("Missing required fields in manifest.yaml")
+        passed = False
+
+    # check if docker image exists locally
+    image = manifest["services"]["image"]
+    result = subprocess.run(
+        ["docker", "images", "-q", image],
+        capture_output=True, text=True
+    )
+    if result.stdout.strip():
+        print(f"Docker image {image} exists")
+    else:
+        print(f"Docker image {image} not found locally")
+        passed = False
+
+    # check if nginx port is not already in use
+    nginx_port = manifest["nginx"]["port"]
+    port_check = subprocess.run(
+        ["ss", "-tuln"],
+        capture_output=True, text=True
+    )
+    if f":{nginx_port}" in port_check.stdout:
+        print(f"Port {nginx_port} is already in use")
+        passed = False
+    else:
+        print(f"Port {nginx_port} is free")
+
+    # check if nginx.conf exists and was generated
+    if os.path.exists("nginx.conf"):
+        print("nginx.conf exists and was generated successfully")
+    else:
+        print("nginx.conf not found, run init first")
+        passed = False
+
+    if passed:
+        print("\nAll checks passed, ready to deploy")
+    else:
+        print("\nSome checks failed, fix them before deploying")
+        sys.exit(1)
+
+def deploy():
+    print("Running init....")
+    init()
+
+    print("Starting stack...")
+    result = subprocess.run(
+        ["docker-compose", "up", "-d"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print("Failed to start stack")
+        print(result.stderr)
+        sys.exit(1)
+
+    print("Waiting for health checks...")
+    manifest = load_manifest()
+    app_port = manifest["services"]["port"]
+    timeout = 60
+    start = time.time()
+
+    while True:
+        result = subprocess.run(
+            ["curl", "-sf", f"http://localhost:8080/healthz"],
+            capture_output=True, text=True
+        )
+        if result.returncode == 0:
+            print("Stack is healthy and running")
+            print("App is available at http://localhost:8080")
+            break
+
+        if time.time() - start > timeout:
+            print("Health check timed out after 60 seconds")
+            sys.exit(1)
+
+        time.sleep(3)
+
+def promote(mode):
+    if mode not in ["canary", "stable"]:
+        print("Invalid mode. Use: canary or stable")
+        sys.exit(1)
+
+    print(f"Promoting to {mode} mode...")
+
+    # update manifest.yaml with new mode
+    manifest = load_manifest()
+    manifest["services"]["mode"] = mode
+
+    with open("manifest.yaml", "w") as f:
+        yaml.dump(manifest, f, default_flow_style=False)
+
+    # regenerate docker-compose.yml with new mode
+    init()
+
+    # restart only the app container
+    # restart only the app container with new env vars
+    result = subprocess.run(
+        ["docker-compose", "up", "-d", "--no-deps", "app"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print("Failed to restart app container")
+        print(result.stderr)
+        sys.exit(1)
+
+    # confirm new mode is active by hitting /healthz
+    time.sleep(3)
+
+    result = subprocess.run(
+        ["curl", "-sf", "http://localhost:8080/healthz"],
+        capture_output=True, text=True
+    )
+    if result.returncode == 0:
+        print(f"Successfully promoted to {mode} mode")
+        print(f"Health check passed: {result.stdout}")
+    else:
+        print("Health check failed after promotion")
+        sys.exit(1)
+
+def teardown():
+    print("stopping and removing contaiers..")
+    result = subprocess.run(
+        ["docker-compose", "down", "-v"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print("Failedd to teardown stack")
+        print(result.stderr)
+        sys.exit(1)
+
+    print("Stack torn down successfully")
+
+    if "--clean" in sys.argv:
+        if os.path.exists("nginx.conf"):
+            os.remove("nginx.conf")
+            print("Deleted nginx.conf")
+        if os.path.exists("docker-compose.yml"):
+            os.remove("docker-compose.yml")
+            print("Deleted docker-compose.yml")
+
+if __name__ == "__main__":
+    command = sys.argv[1] if len(sys.argv) > 1 else ""
+
+    if command == "init":
+        init()
+    elif command == "validate":
+        validate()
+    elif command == "deploy":
+        deploy()
+    elif command == "promote":
+        if len(sys.argv) < 3:
+            print("Usage: ./swiftdeploy promote [canary|stable]")
+            sys.exit(1)
+        promote(sys.argv[2])
+    elif command == "teardown":
+        teardown()
+    else:
+        print(f"Unknown command: {command}")
+    

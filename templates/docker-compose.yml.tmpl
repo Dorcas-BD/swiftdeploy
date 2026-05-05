@@ -1,0 +1,44 @@
+version: '3.3'
+
+services:
+  app:
+    image: {{APP_IMAGE}}
+    container_name: swiftdeploy-app
+    environment:
+      - MODE={{MODE}}
+      - APP_VERSION={{APP_VERSION}}
+      - APP_PORT={{APP_PORT}}
+    networks:
+      - {{NETWORK_NAME}}
+    restart: {{RESTART_POLICY}}
+    volumes:
+      - {{LOGS_VOLUME}}:/app/logs
+    cap_drop:
+      - ALL
+    user: appuser
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:{{APP_PORT}}/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  nginx:
+    image: {{NGINX_IMAGE}}
+    container_name: swiftdeploy-nginx
+    ports:
+      - "{{NGINX_PORT}}:{{NGINX_PORT}}"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - {{LOGS_VOLUME}}:/var/log/nginx
+    networks:
+      - {{NETWORK_NAME}}
+    depends_on:
+      - app
+    restart: {{RESTART_POLICY}}
+
+networks:
+  {{NETWORK_NAME}}:
+    driver: {{NETWORK_DRIVER}}
+
+volumes:
+  {{LOGS_VOLUME}}:
