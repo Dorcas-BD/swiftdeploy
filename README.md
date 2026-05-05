@@ -1,9 +1,7 @@
 # SwiftDeploy
-
 SwiftDeploy is a CLI tool that deploys a containerised app using a single `manifest.yaml` file. You edit the manifest, the tool handles everything else.
 
 ## Requirements
-
 - Docker
 - Docker Compose
 - Python 3
@@ -18,9 +16,12 @@ SwiftDeploy is a CLI tool that deploys a containerised app using a single `manif
 
 ## Setup
 
-Clone the repo:
+Fork this repository by clicking the **Fork** button on the top right of this page:
+`https://github.com/Dorcas-BD/swiftdeploy`
+
+Then clone your forked copy:
 ```bash
-git clone https://github.com/your-usernamee/swiftdeploy
+git clone https://github.com/your-usernamee/swiftdeploy.git
 cd swiftdeploy
 ```
 
