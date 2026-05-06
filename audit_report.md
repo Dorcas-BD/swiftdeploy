@@ -1,0 +1,107 @@
+# SwiftDeploy Audit Report
+
+Generated from 95 recorded snapshots.
+
+## Timeline
+
+| Timestamp | Health | Mode | Infra Policy | Canary Policy |
+|---|---|---|---|---|
+| 2026-05-06T21:58:34.638006+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:58:37.695173+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:58:40.730857+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:58:43.758550+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:58:46.794529+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:58:49.826452+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:58:52.856327+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:58:57.640762+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:00.702483+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:03.739016+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:06.781898+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:09.814767+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:12.841169+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:15.872027+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:18.905757+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:21.927714+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:24.963396+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:29.692417+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:32.719864+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:35.745914+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:38.771262+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:41.808196+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:44.843818+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:47.882396+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:50.922049+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:53.975672+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T21:59:57.017314+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:00.054980+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:04.533332+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:07.572170+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:10.610899+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:13.640728+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:16.671178+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:19.703240+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:22.750349+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:25.785448+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:28.821457+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:31.859711+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:36.458564+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:39.483824+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:42.541970+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:45.579006+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:48.606461+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:51.633647+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:54.659469+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:00:57.683916+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:00.709191+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:03.739350+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:06.427022+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:10.990504+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:14.018466+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:17.043282+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:20.067158+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:23.093441+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:26.117912+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:29.147169+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:32.181328+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:35.217588+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:38.247566+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:41.277325+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:45.924902+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:48.958783+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:51.988572+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:55.014090+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:01:58.074126+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:01.124694+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:04.168468+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:07.206036+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:10.245904+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:13.277037+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:16.310411+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:20.963382+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:23.993389+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:27.023391+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:30.050418+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:33.076595+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:36.098772+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:39.145789+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:42.180332+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:45.230973+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:48.273107+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:52.861159+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:55.894084+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:02:58.923734+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:11:58.424668+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:01.460034+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:04.487618+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:07.519970+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:10.550164+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:13.579699+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:16.621655+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:19.689269+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:22.722720+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:25.759964+00:00 | ok | stable | ALLOW | ALLOW |
+| 2026-05-06T22:12:30.877330+00:00 | ok | stable | ALLOW | ALLOW |
+
+## Policy Violations
+
+No policy violations recorded.

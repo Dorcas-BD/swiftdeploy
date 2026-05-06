@@ -6,12 +6,63 @@ import yaml
 import subprocess
 import shutil 
 import time
+import json
+import urllib.request
+import psutil
 
+def get_host_stats():
+    disk = psutil.disk_usage("/")
+    disk_free_gb = round(disk.free / (1024 ** 3), 2)
+    cpu_load = round(os.getloadavg()[0], 2)
+    return {"disk_free_gb": disk_free_gb, "cpu_load": cpu_load}
 
+def parse_metrics(text):
+    error_count = 0
+    total_count = 0
+    p99_latency_ms = 0.0
+
+    for line in text.splitlines():
+        if line.startswith("http_requests_total{") and "status_code=\"5" in line:
+            try:
+                error_count += float(line.split()[-1])
+            except Exception:
+                pass
+        if line.startswith("http_requests_total{"):
+            try:
+                total_count += float(line.split()[-1])
+            except Exception:
+                pass
+        if 'le="0.5"' in line and "http_request_duration" in line:
+            try:
+                p99_latency_ms = float(line.split()[-1]) * 1000
+            except Exception:
+                pass
+
+    error_rate = round(error_count / total_count, 4) if total_count > 0 else 0.0
+    return {"error_rate": error_rate, "p99_latency_ms": round(p99_latency_ms, 2)}
+
+def check_opa(package, input_data):
+    try:
+        data = json.dumps({"input": input_data}).encode()
+        req = urllib.request.Request(
+            f"http://localhost:8181/v1/data/{package}",
+            data=data,
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as r:
+            result = json.loads(r.read())
+        r = result.get("result", {})
+        return r.get("allow", False), r.get("deny", [])
+    except ConnectionRefusedError:
+        print("OPA is not running. Start the stack first.")
+        return None, ["OPA unreachable"]
+    except Exception as e:
+        print(f"OPA check failed: {e}")
+        return None, ["OPA error"]
+    
 def load_manifest():
     with open("manifest.yaml", "r") as f:
         return yaml.safe_load(f)
-
 
 def init():
     manifest = load_manifest()
@@ -62,7 +113,6 @@ def init():
 
     print("Generated nginx.conf")
     print("Generated docker-compose.yml")
-
 
 def validate():
     passed = True
@@ -129,6 +179,22 @@ def validate():
 
 def deploy():
     print("Running init....")
+# pre-deploy OPA check (only if OPA is already running)
+    print("Running pre-deploy policy checks...")
+    host = get_host_stats()
+    allow, deny = check_opa("infrastructure", {
+        "disk_free_gb": host["disk_free_gb"],
+        "cpu_load": host["cpu_load"]
+    })
+    if allow is None:
+        print("OPA not available, skipping policy check for first deploy...")
+    elif not allow:
+        print("Deploy blocked by policy:")
+        for msg in deny:
+            print(f"  - {msg}")
+        sys.exit(1)
+    else:
+        print("Policy checks passed, proceeding with deploy...")
     init()
 
     print("Starting stack...")
@@ -169,6 +235,31 @@ def promote(mode):
         sys.exit(1)
 
     print(f"Promoting to {mode} mode...")
+
+    # pre-promote OPA check using live metrics
+    print("Running pre-promote policy checks...")
+    metrics_text = None
+    try:
+        req = urllib.request.Request("http://localhost:8080/metrics")
+        with urllib.request.urlopen(req, timeout=3) as r:
+            metrics_text = r.read().decode()
+    except Exception:
+        pass
+
+    parsed = parse_metrics(metrics_text) if metrics_text else {"error_rate": 0, "p99_latency_ms": 0}
+    allow, deny = check_opa("canary", {
+        "error_rate": parsed["error_rate"],
+        "p99_latency_ms": parsed["p99_latency_ms"]
+    })
+    if allow is None:
+        print("OPA unavailable, cannot verify policy. Aborting.")
+        sys.exit(1)
+    if not allow:
+        print("Promotion blocked by policy:")
+        for msg in deny:
+            print(f"  - {msg}")
+        sys.exit(1)
+    print("Policy checks passed, proceeding with promotion...")
 
     # update manifest.yaml with new mode
     manifest = load_manifest()
@@ -226,6 +317,217 @@ def teardown():
             os.remove("docker-compose.yml")
             print("Deleted docker-compose.yml")
 
+def status():
+
+    def fetch(url, data=None):
+        try:
+            if data:
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(data).encode(),
+                    headers={"Content-Type": "application/json"}
+                )
+            else:
+                req = urllib.request.Request(url)
+            with urllib.request.urlopen(req, timeout=3) as r:
+                return json.loads(r.read())
+        except Exception:
+            return None
+
+    def check_opa(package, input_data):
+        result = fetch(f"http://localhost:8181/v1/data/{package}", {"input": input_data})
+        if result is None:
+            return None, ["OPA unreachable"]
+        r = result.get("result", {})
+        return r.get("allow", False), r.get("deny", [])
+
+    def colorize(text, color):
+        colors = {
+            "green": "\033[92m", "red": "\033[91m",
+            "yellow": "\033[93m", "reset": "\033[0m",
+            "bold": "\033[1m", "cyan": "\033[96m"
+        }
+        return f"{colors.get(color, '')}{text}{colors['reset']}"
+
+    def append_history(metrics, health, infra_allow, canary_allow):
+        import datetime
+        record = {
+            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "health": health,
+            "metrics": metrics,
+            "infra_allow": infra_allow,
+            "canary_allow": canary_allow
+        }
+        with open("history.jsonl", "a") as f:
+            f.write(json.dumps(record) + "\n")
+
+    def render(metrics, health, infra, canary):
+        subprocess.run(["clear"], check=False)
+        width = 52
+
+        def row(label, value, ok=None):
+            if ok is True:
+                indicator = colorize("OK", "green")
+            elif ok is False:
+                indicator = colorize("FAIL", "red")
+            else:
+                indicator = ""
+            line = f"  {label:<20} {value}"
+            print(line + "  " + indicator)
+
+        print(colorize("=" * width, "cyan"))
+        print(colorize(f"{'SwiftDeploy Status Dashboard':^{width}}", "bold"))
+        print(colorize("=" * width, "cyan"))
+
+        if health:
+            h = health.get("status", "unknown")
+            uptime = health.get("uptime", "?")
+            row("App Health", colorize(h.upper(), "green" if h == "ok" else "red"), h == "ok")
+            row("Uptime", f"{uptime}s")
+        else:
+            row("App Health", colorize("UNREACHABLE", "red"), False)
+
+        print(colorize("-" * width, "cyan"))
+
+        if metrics:
+            cpu = metrics.get("cpu_load", "?")
+            disk = metrics.get("disk_free_gb", "?")
+            err = metrics.get("error_rate", "?")
+            p99 = metrics.get("p99_latency_ms", "?")
+            row("CPU Load", str(cpu), cpu != "?" and cpu < 2.0)
+            row("Disk Free", f"{disk}GB", disk != "?" and disk >= 10)
+            row("Error Rate", str(err), err != "?" and err < 0.01)
+            row("P99 Latency", f"{p99}ms", p99 != "?" and p99 < 500)
+        else:
+            row("Metrics", colorize("UNREACHABLE", "red"), False)
+
+        print(colorize("-" * width, "cyan"))
+
+        infra_allow, infra_deny = infra
+        canary_allow, canary_deny = canary
+
+        if infra_allow is None:
+            row("Infrastructure", colorize("OPA UNREACHABLE", "red"), False)
+        else:
+            row("Infrastructure", colorize("ALLOW", "green") if infra_allow else colorize("DENY", "red"), infra_allow)
+            if not infra_allow:
+                for msg in infra_deny:
+                    print(f"    {colorize(msg, 'yellow')}")
+
+        if canary_allow is None:
+            row("Canary", colorize("OPA UNREACHABLE", "red"), False)
+        else:
+            row("Canary", colorize("ALLOW", "green") if canary_allow else colorize("DENY", "red"), canary_allow)
+            if not canary_allow:
+                for msg in canary_deny:
+                    print(f"    {colorize(msg, 'yellow')}")
+
+        print(colorize("=" * width, "cyan"))
+        now = time.strftime("%H:%M:%S")
+        print(f"  Last updated: {now}  |  Press Ctrl+C to quit")
+        print(colorize("=" * width, "cyan"))
+
+    print("Starting status dashboard... (Ctrl+C to quit)")
+    try:
+        while True:
+            health = fetch("http://localhost:8080/healthz")
+
+            # fetch metrics as plain text not json
+            metrics_text = None
+            try:
+                req = urllib.request.Request("http://localhost:8080/metrics")
+                with urllib.request.urlopen(req, timeout=3) as r:
+                    metrics_text = r.read().decode()
+            except Exception:
+                pass
+
+            # get host stats and parsed metrics
+            host = get_host_stats()
+            parsed = parse_metrics(metrics_text) if metrics_text else {"error_rate": 0, "p99_latency_ms": 0}
+
+            # combine for display
+            metrics = {**host, **parsed} if host else None
+
+            infra_input = {
+                "disk_free_gb": host["disk_free_gb"],
+                "cpu_load": host["cpu_load"]
+            }
+            canary_input = {
+                "error_rate": parsed["error_rate"],
+                "p99_latency_ms": parsed["p99_latency_ms"]
+            }
+
+            infra = check_opa("infrastructure", infra_input)
+            canary = check_opa("canary", canary_input)
+
+            infra_allow = infra[0]
+            canary_allow = canary[0]
+            append_history(metrics, health, infra_allow, canary_allow)
+            render(metrics, health, infra, canary)
+            time.sleep(3)
+    except KeyboardInterrupt:
+        print("\nDashboard stopped.")
+
+def audit():
+    if not os.path.exists("history.jsonl"):
+        print("No history found. Run ./swiftdeploy status first to generate history.")
+        sys.exit(1)
+
+    records = []
+    with open("history.jsonl", "r") as f:
+        for line in f:
+            try:
+                records.append(json.loads(line.strip()))
+            except Exception:
+                pass
+
+    if not records:
+        print("History file is empty.")
+        sys.exit(1)
+
+    lines = []
+    lines.append("# SwiftDeploy Audit Report\n")
+    lines.append(f"Generated from {len(records)} recorded snapshots.\n")
+
+    # timeline table
+    lines.append("## Timeline\n")
+    lines.append("| Timestamp | Health | Mode | Infra Policy | Canary Policy |")
+    lines.append("|---|---|---|---|---|")
+
+    for r in records:
+        ts = r.get("timestamp", "?")
+        health = r.get("health", {})
+        status = health.get("status", "?") if health else "unreachable"
+        metrics = r.get("metrics", {}) or {}
+        mode = "canary" if metrics.get("app_mode") == 1 else "stable"
+        infra = "ALLOW" if r.get("infra_allow") else "DENY"
+        canary = "ALLOW" if r.get("canary_allow") else "DENY"
+        lines.append(f"| {ts} | {status} | {mode} | {infra} | {canary} |")
+
+    # violations section
+    lines.append("\n## Policy Violations\n")
+    violations = [r for r in records if not r.get("infra_allow") or not r.get("canary_allow")]
+
+    if not violations:
+        lines.append("No policy violations recorded.\n")
+    else:
+        lines.append(f"Found {len(violations)} violation(s):\n")
+        for v in violations:
+            ts = v.get("timestamp", "?")
+            lines.append(f"### {ts}\n")
+            if not v.get("infra_allow"):
+                lines.append("- **Infrastructure policy failed**")
+            if not v.get("canary_allow"):
+                lines.append("- **Canary policy failed**")
+            lines.append("")
+
+    report = "\n".join(lines)
+    with open("audit_report.md", "w") as f:
+        f.write(report)
+
+    print("Audit report generated: audit_report.md")
+
+
 if __name__ == "__main__":
     command = sys.argv[1] if len(sys.argv) > 1 else ""
 
@@ -242,6 +544,10 @@ if __name__ == "__main__":
         promote(sys.argv[2])
     elif command == "teardown":
         teardown()
+    elif command == "status":
+        status()
+    elif command == "audit":
+        audit()
     else:
         print(f"Unknown command: {command}")
     
