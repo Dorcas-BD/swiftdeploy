@@ -10,7 +10,7 @@ WORKDIR /app
 
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-    
+
 #copy the app code
 COPY app/ .
 
@@ -20,5 +20,5 @@ USER appuser
 #tell docker to run your app in port 3000
 EXPOSE 3000
 
-#stat the app
+#stat the app, uvicorn is the server that runs fastAPI
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "3000"]

@@ -117,3 +117,44 @@ curl -X POST http://localhost:8080/chaos \
 **stable** - normal production mode
 
 **canary** - test mode, enables the chaos endpoint and adds an `X-Mode: canary` header to every response
+
+
+## Demo
+
+### Step 1 — deploy and promote to canary
+```bash
+./swiftdeploy deploy - (X2)
+curl http://localhost:8080/
+./swiftdeploy promote canary
+```
+
+
+### Step 2 — open the status dashboard in a second terminal
+```bash
+./swiftdeploy status
+```
+
+### Step 3 — inject errors and generate traffic
+```bash
+curl -X POST http://localhost:8080/chaos \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "error", "rate": 0.5}'
+
+for i in {1..20}; do curl -s http://localhost:8080/ > /dev/null; done
+```
+
+### Step 4 — try to promote, it will be blocked
+```bash
+./swiftdeploy promote stable
+```
+
+### Step 5 — recover and promote successfully
+```bash
+curl -X POST http://localhost:8080/chaos \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "recover"}'
+
+for i in {1..500}; do curl -s http://localhost:8080/ > /dev/null; done
+
+./swiftdeploy promote stable
+```

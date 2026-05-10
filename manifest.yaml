@@ -7,7 +7,7 @@ nginx:
   proxy_timeout: 30
 services:
   image: swift-deploy-1-node:latest
-  mode: canary
+  mode: stable
   port: 3000
   restart_policy: always
   version: 1.0.0

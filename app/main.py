@@ -17,7 +17,7 @@ http_requests_total = Counter(
     ["method", "path", "status_code"]
 )
 
-#histogram tracks how long it takes and group them into buckets
+#histogram tracks how long it takes each request and group them into buckets
 http_request_duration_seconds = Histogram(
     "http_request_duration_seconds",
     "HTTP request duration",
@@ -35,6 +35,7 @@ START_TIME = time.time() #when the app starts
 MODE = os.getenv("MODE", "stable")
 APP_VERSION = os.getenv("APP_VERSION", "1.0.0")
 
+#define the shapes of the json sent to t/chaos.mode
 class ChaosRequest(BaseModel):
     mode: str
     duration: int = 0

@@ -16,7 +16,7 @@ def get_host_stats():
     cpu_load = round(os.getloadavg()[0], 2)
     return {"disk_free_gb": disk_free_gb, "cpu_load": cpu_load}
 
-def parse_metrics(text):
+
     error_count = 0
     total_count = 0
     p99_latency_ms = 0.0
@@ -37,6 +37,46 @@ def parse_metrics(text):
                 p99_latency_ms = float(line.split()[-1]) * 1000
             except Exception:
                 pass
+
+    error_rate = round(error_count / total_count, 4) if total_count > 0 else 0.0
+    return {"error_rate": error_rate, "p99_latency_ms": round(p99_latency_ms, 2)}
+
+def parse_metrics(text):
+    error_count = 0
+    total_count = 0
+    p99_latency_ms = 0.0
+    buckets = {}
+
+    for line in text.splitlines():
+        if line.startswith("#"):
+            continue
+        if line.startswith("http_requests_total{") and 'status_code="5' in line:
+            try:
+                error_count += float(line.split()[-1])
+            except Exception:
+                pass
+        if line.startswith("http_requests_total{"):
+            try:
+                total_count += float(line.split()[-1])
+            except Exception:
+                pass
+        if "http_request_duration_seconds_bucket{" in line:
+            try:
+                le_str = line.split('le="')[1].split('"')[0]
+                if le_str == "+Inf":
+                    continue
+                buckets[float(le_str)] = float(line.split()[-1])
+            except Exception:
+                pass
+
+    if buckets:
+        max_count = max(buckets.values())
+        if max_count > 0:
+            target = max_count * 0.99
+            for le in sorted(buckets.keys()):
+                if buckets[le] >= target:
+                    p99_latency_ms = le * 1000
+                    break
 
     error_rate = round(error_count / total_count, 4) if total_count > 0 else 0.0
     return {"error_rate": error_rate, "p99_latency_ms": round(p99_latency_ms, 2)}

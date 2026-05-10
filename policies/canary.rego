@@ -11,7 +11,7 @@ deny contains msg if {
 
 deny contains msg if {
     input.p99_latency_ms > data.thresholds.p99_latency_max_ms
-    msg := sprintf("P99 latency is %dms, maximum allowed is %dms", [input.p99_latency_ms, data.thresholds.p99_latency_max_ms])
+    msg := sprintf("P99 latency is %vms, maximum allowed is %vms", [input.p99_latency_ms, data.thresholds.p99_latency_max_ms])
 }
 
 allow if {
